@@ -1,0 +1,46 @@
+[
+    {
+        "Category": "LIMITATION OF LIABILITY & LIQUIDATED DAMAGES",
+        "Condition": "Total liability cap >100%",
+        "Approval_Matrix": {
+            "Legal": "Prepares/Initiates",
+            "Sales": "Prepares/Initiates",
+            "Head of BU": "Support required",
+            "Head of Legal": "Always involved",
+            "BA President": "Support required",
+            "CEO": "Approves/Decides"
+        }
+    },
+    {
+        "Category": "LIMITATION OF LIABILITY & LIQUIDATED DAMAGES",
+        "Condition": "Total liability cap >70%",
+        "Approval_Matrix": {
+            "Legal": "Prepares/Initiates",
+            "Sales": "Prepares/Initiates",
+            "Head of BU": "Support required",
+            "Head of Legal": "Always involved",
+            "BA President": "Approves/Decides"
+        }
+    },
+    {
+        "Category": "LIMITATION OF LIABILITY & LIQUIDATED DAMAGES",
+        "Condition": "Liquidated damages/penalties for delay >15% of Contract Price",
+        "Approval_Matrix": {
+            "Legal": "Prepares/Initiates",
+            "Sales": "Prepares/Initiates",
+            "Head of BU": "Support required",
+            "Head of Legal": "Always involved",
+            "BA President": "Approves/Decides"
+        }
+    },
+    {
+        "Category": "SCOPE OF SUPPLY",
+        "Condition": "Payment term longer than 60 days",
+        "Approval_Matrix": {
+            "Legal": "Prepares/Initiates",
+            "Sales": "Prepares/Initiates",
+            "Head of BU": "Approves/Decides",
+            "Head of Legal": "Always involved"
+        }
+    }
+]
