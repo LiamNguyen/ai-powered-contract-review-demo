@@ -6,9 +6,14 @@ and add comments to specific text ranges.
 
 import json
 import re
+from pathlib import Path
 from typing import Optional
 
 from .auth import get_docs_service, get_drive_service
+
+# Path to approval matrix
+PROJECT_ROOT = Path(__file__).parent.parent
+APPROVAL_MATRIX_FILE = PROJECT_ROOT / "contract_approval_matrix.json"
 
 
 def extract_document_id(doc_id_or_url: str) -> str:
@@ -310,3 +315,101 @@ def find_text_position(document_id: str, search_text: str) -> dict:
         "length": len(search_text),
         "context": f"...{context}...",
     }
+
+
+def get_approval_matrix_prompt(
+    matrix_file: Optional[str] = None,
+    format: str = "markdown"
+) -> str:
+    """Format the contract approval matrix for embedding in LLM system prompts.
+
+    Args:
+        matrix_file: Path to approval matrix JSON file. Defaults to contract_approval_matrix.json.
+        format: Output format - "markdown" (default), "structured", or "compact"
+
+    Returns:
+        Formatted string ready to be embedded in an LLM system prompt.
+    """
+    if matrix_file is None:
+        matrix_file = APPROVAL_MATRIX_FILE
+
+    with open(matrix_file, "r") as f:
+        rules = json.load(f)
+
+    if format == "markdown":
+        return _format_matrix_markdown(rules)
+    elif format == "structured":
+        return _format_matrix_structured(rules)
+    elif format == "compact":
+        return _format_matrix_compact(rules)
+    else:
+        raise ValueError(f"Unknown format: {format}. Use 'markdown', 'structured', or 'compact'")
+
+
+def _format_matrix_markdown(rules: list) -> str:
+    """Format approval matrix as markdown tables."""
+    output = ["# Contract Approval Matrix", ""]
+    output.append("Use this matrix to determine required approvals for contract terms:")
+    output.append("")
+
+    # Group rules by category
+    by_category = {}
+    for rule in rules:
+        category = rule["Category"]
+        if category not in by_category:
+            by_category[category] = []
+        by_category[category].append(rule)
+
+    for category, category_rules in by_category.items():
+        output.append(f"## {category}")
+        output.append("")
+
+        for rule in category_rules:
+            output.append(f"### Condition: {rule['Condition']}")
+            output.append("")
+            output.append("| Role | Involvement Level |")
+            output.append("|------|-------------------|")
+
+            for role, involvement in rule["Approval_Matrix"].items():
+                output.append(f"| {role} | {involvement} |")
+
+            output.append("")
+
+    return "\n".join(output)
+
+
+def _format_matrix_structured(rules: list) -> str:
+    """Format approval matrix as structured text blocks."""
+    output = ["CONTRACT APPROVAL MATRIX", "=" * 80, ""]
+
+    for i, rule in enumerate(rules, 1):
+        output.append(f"RULE #{i}")
+        output.append("-" * 80)
+        output.append(f"Category: {rule['Category']}")
+        output.append(f"Trigger Condition: {rule['Condition']}")
+        output.append("")
+        output.append("Required Approvals:")
+
+        for role, involvement in rule["Approval_Matrix"].items():
+            output.append(f"  • {role}: {involvement}")
+
+        output.append("")
+
+    return "\n".join(output)
+
+
+def _format_matrix_compact(rules: list) -> str:
+    """Format approval matrix in compact format for smaller prompts."""
+    output = ["CONTRACT APPROVAL RULES:"]
+
+    for i, rule in enumerate(rules, 1):
+        approvers = [
+            f"{role}({involvement})"
+            for role, involvement in rule["Approval_Matrix"].items()
+        ]
+        output.append(
+            f"{i}. [{rule['Category']}] IF {rule['Condition']} "
+            f"THEN REQUIRE: {', '.join(approvers)}"
+        )
+
+    return "\n".join(output)
