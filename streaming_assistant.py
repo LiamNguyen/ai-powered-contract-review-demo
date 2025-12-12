@@ -103,8 +103,10 @@ class StreamingContractAssistant:
         if not doc_url:
             # If user said "yes" but no previous evaluation, inform them
             if is_simple_yes:
-                yield "I don't have a recent contract evaluation to send an email for.\n"
-                yield "Please evaluate a contract first, then I can send the escalation email.\n\n"
+                yield "I don't have a recent contract evaluation to send an email for.\n\n"
+                yield "**Note:** Emails are only sent when my recommendation is to **Escalate Directly**.\n"
+                yield "If the recommendation was to **Re-Negotiate**, you should negotiate with the customer first before escalating.\n\n"
+                yield "Please evaluate a contract first, then I can send the escalation email if appropriate.\n\n"
                 yield "Example: Please evaluate this contract: https://docs.google.com/document/d/YOUR_DOC_ID/edit"
             else:
                 yield "I couldn't find a Google Docs URL in your message. "
@@ -326,11 +328,13 @@ Return your analysis as valid JSON."""
             yield f"**Highest Approval Level Required:** {highest_escalation}\n\n"
 
             # Stream recommendations section
+            recommendation_action = None
             if "recommendation" in analysis:
                 yield "💡 **My Recommendation**\n\n"
 
                 recommendation = analysis["recommendation"]
-                action = recommendation.get("action", "").replace("-", " ").title()
+                recommendation_action = recommendation.get("action", "")
+                action = recommendation_action.replace("-", " ").title()
 
                 # Stream action
                 yield f"**Recommended Action:** {action}\n\n"
@@ -386,46 +390,51 @@ Return your analysis as valid JSON."""
                 for i, violation in enumerate(analysis["violations"], 1):
                     violations_summary += f"{i}. {violation['category']}: {violation['policy_violated']}\n"
 
-                # Store evaluation for potential email sending
-                self.last_evaluation = {
-                    "doc_url": doc_url,
-                    "doc_title": doc_title,
-                    "violations_summary": violations_summary,
-                    "highest_escalation": highest_escalation,
-                    "violations": analysis["violations"]
-                }
+                # Check if we should prompt for email (only for "escalate-directly" recommendation)
+                should_offer_email = recommendation_action == "escalate-directly"
 
-                # Handle email sending or prompt
-                if is_email_request:
-                    # User requested to send email
-                    yield "📧 Sending escalation email to Antti (Head of BU)...\n"
+                # Store evaluation for potential email sending (only if escalate-directly)
+                if should_offer_email:
+                    self.last_evaluation = {
+                        "doc_url": doc_url,
+                        "doc_title": doc_title,
+                        "violations_summary": violations_summary,
+                        "highest_escalation": highest_escalation,
+                        "violations": analysis["violations"]
+                    }
 
-                    # Send email
-                    email_result = send_escalation_email(
-                        to_email="liamnguyen1208@gmail.com",
-                        recipient_name="Antti",
-                        contract_title=doc_title,
-                        contract_url=doc_url,
-                        violations_summary=violations_summary,
-                        escalation_level=highest_escalation
-                    )
+                # Handle email sending or prompt (only if escalate-directly)
+                if should_offer_email:
+                    if is_email_request:
+                        # User requested to send email
+                        yield "📧 Sending escalation email to Antti (Head of BU)...\n"
 
-                    if email_result["success"]:
-                        yield f"✅ Email sent successfully to Antti (liamnguyen1208@gmail.com)\n"
-                        yield f"📨 Message ID: {email_result['message_id']}\n"
+                        # Send email
+                        email_result = send_escalation_email(
+                            to_email="liamnguyen1208@gmail.com",
+                            recipient_name="Antti",
+                            contract_title=doc_title,
+                            contract_url=doc_url,
+                            violations_summary=violations_summary,
+                            escalation_level=highest_escalation
+                        )
+
+                        if email_result["success"]:
+                            yield f"✅ Email sent successfully to Antti (liamnguyen1208@gmail.com)\n"
+                            yield f"📨 Message ID: {email_result['message_id']}\n"
+                        else:
+                            yield f"❌ Failed to send email: {email_result['error']}\n"
+                            yield "Please check your Gmail API credentials and permissions.\n"
+
+                        # Clear stored evaluation after sending
+                        self.last_evaluation = None
                     else:
-                        yield f"❌ Failed to send email: {email_result['error']}\n"
-                        yield "Please check your Gmail API credentials and permissions.\n"
-
-                    # Clear stored evaluation after sending
-                    self.last_evaluation = None
-                else:
-                    # Prompt user to send email
-                    yield "---\n\n"
-                    yield f"📧 **Escalation Required**\n\n"
-                    yield f"This contract requires **{highest_escalation}** approval. "
-                    yield "Would you like me to send an escalation email to Antti (Head of BU)?\n\n"
-                    yield "Simply reply: **Yes**\n"
+                        # Prompt user to send email
+                        yield "---\n\n"
+                        yield f"📧 **Escalation Required**\n\n"
+                        yield f"This contract requires **{highest_escalation}** approval. "
+                        yield "Would you like me to send an escalation email to Antti (Head of BU)?\n\n"
+                        yield "Simply reply: **Yes**\n"
             else:
                 msg = "No policy violations found. The contract complies with all approval matrix rules."
                 words = msg.split()

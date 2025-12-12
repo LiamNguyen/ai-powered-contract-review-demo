@@ -33,10 +33,11 @@ Workflow:
 1. User sends message via POST /chat/stream with Google Docs URL
 2. StreamingAssistant extracts URL and analyzes contract
 3. Streams real-time progress updates during evaluation
-4. Returns formatted summary with evaluation results
-5. If escalation required, stores evaluation and prompts: "Simply reply: Yes"
-6. User replies "Yes" (or similar) → email sent immediately without re-evaluation
-7. Evaluation cleared from memory after email is sent
+4. Returns formatted summary with evaluation results and recommendation
+5. **If recommendation is "Escalate Directly":** stores evaluation and prompts: "Simply reply: Yes"
+6. **If recommendation is "Re-Negotiate":** no email prompt (user should negotiate first)
+7. User replies "Yes" (or similar) → email sent immediately without re-evaluation
+8. Evaluation cleared from memory after email is sent
 
 ### Standalone Application
 
@@ -244,14 +245,23 @@ curl -X POST "http://localhost:8000/send-email" \
 ```
 
 **Conversational Email Flow:**
-After evaluating a contract with violations, the assistant will prompt:
+
+The email prompt only appears when the recommendation is **"Escalate Directly"**.
+
+After evaluating a contract with violations AND recommending direct escalation:
 ```
+Recommended Action: Escalate Directly
+
+---
+
 This contract requires CEO approval. Would you like me to send an escalation email to Antti (Head of BU)?
 
 Simply reply: Yes
 ```
 
 Just reply "Yes" (or "yeah", "sure", "ok", "send it") and the system will automatically send the email using the stored evaluation - no need to re-evaluate!
+
+**If the recommendation is "Re-Negotiate":** No email prompt appears. You should negotiate with the customer to reduce violations before escalating internally.
 
 ## Key Implementation Details
 
