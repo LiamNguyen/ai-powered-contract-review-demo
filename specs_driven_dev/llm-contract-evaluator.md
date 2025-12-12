@@ -81,3 +81,13 @@ This endpoint receives user's message, pass to the current python script for eva
 In user message, user will provide Google Docs url (the contract) that needs to be evaluated.
 
 You need to improve the current Python script to make the LLM read user's message, pick out the Google Docs URL, feed to tools for next steps in the evaluation process.
+
+## 3rd requirement
+
+1. I defined the previous contracts here: `previous-contracts.json`.
+2. I want the current LLM-powered contract evaluator to consider this during the evaluation.
+3. LLM should add to the response to user, below the "Highest level escalation required" section, a section 'My recommendations'
+4. In this section, LLM should suggest either:
+   1. Due to high level escalation required and for this customer, no deviation has been accepted before, and high number of past negotiation rounds, suggest to re-negotiate with customer before escalating
+   2. Even though escalation level is high, for this customer, deviations have been accepted before, with less number of negotiation rounds, suggest to escalate directly instead of re-negotiating
+

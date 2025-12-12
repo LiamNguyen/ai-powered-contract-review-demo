@@ -27,7 +27,7 @@
         "accepted_deviations": [
             {
                 "condition": "Total liability cap >100%",
-                "negotiated_term": "Total liability cap agreed 120%"
+                "negotiated_term": "Total liability cap agreed 500%"
             }
         ],
         "customer_negotiation_rounds": 1
@@ -43,7 +43,7 @@
             },
             {
                 "condition": "Liquidated damages/penalties for delay >15% of Contract Price",
-                "negotiated_term": "Liquidated damages/penalties for delay agreed to be 30% of Contract Price"
+                "negotiated_term": "Liquidated damages/penalties for delay agreed to be 20% of Contract Price"
             }
         ],
         "customer_negotiation_rounds": 1
@@ -59,7 +59,7 @@
             },
             {
                 "condition": "Liquidated damages/penalties for delay >15% of Contract Price",
-                "negotiated_term": "Liquidated damages/penalties for delay 30% of Contract Price"
+                "negotiated_term": "Liquidated damages/penalties for delay 20% of Contract Price"
             }
         ],
         "customer_negotiation_rounds": 2

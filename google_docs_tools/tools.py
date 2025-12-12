@@ -4,12 +4,14 @@ These functions can be used as tools for an LLM to read Google Docs
 and add comments to specific text ranges.
 """
 
+import base64
 import json
 import re
+from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Optional
 
-from .auth import get_docs_service, get_drive_service
+from .auth import get_docs_service, get_drive_service, get_gmail_service
 
 # Path to approval matrix
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -72,11 +74,13 @@ def _extract_text_from_element(element: dict, segments: list) -> None:
         for elem in para.get("elements", []):
             if "textRun" in elem:
                 text_run = elem["textRun"]
-                segments.append({
-                    "text": text_run.get("content", ""),
-                    "start_index": elem.get("startIndex", 0),
-                    "end_index": elem.get("endIndex", 0),
-                })
+                segments.append(
+                    {
+                        "text": text_run.get("content", ""),
+                        "start_index": elem.get("startIndex", 0),
+                        "end_index": elem.get("endIndex", 0),
+                    }
+                )
 
     if "table" in element:
         table = element["table"]
@@ -172,9 +176,7 @@ def add_comment(
                         "endIndex": position["start_index"] + position["length"],
                     },
                     "textStyle": {
-                        "backgroundColor": {
-                            "color": {"rgbColor": highlight_color}
-                        }
+                        "backgroundColor": {"color": {"rgbColor": highlight_color}}
                     },
                     "fields": "backgroundColor",
                 }
@@ -193,7 +195,9 @@ def add_comment(
     # Add prefix to comment for easy identification
     if add_prefix:
         # Truncate quoted text if too long for prefix
-        prefix_text = quoted_text if len(quoted_text) <= 50 else quoted_text[:47] + "..."
+        prefix_text = (
+            quoted_text if len(quoted_text) <= 50 else quoted_text[:47] + "..."
+        )
         final_comment_text = f"[Re: '{prefix_text}']\n\n{comment_text}"
     else:
         final_comment_text = comment_text
@@ -206,11 +210,15 @@ def add_comment(
         },
     }
 
-    result = drive_service.comments().create(
-        fileId=doc_id,
-        body=comment_body,
-        fields="id,content,quotedFileContent,author,createdTime",
-    ).execute()
+    result = (
+        drive_service.comments()
+        .create(
+            fileId=doc_id,
+            body=comment_body,
+            fields="id,content,quotedFileContent,author,createdTime",
+        )
+        .execute()
+    )
 
     return {
         "success": True,
@@ -250,8 +258,7 @@ def create_document(title: str, content: str = "") -> dict:
             }
         ]
         service.documents().batchUpdate(
-            documentId=doc_id,
-            body={"requests": requests}
+            documentId=doc_id, body={"requests": requests}
         ).execute()
 
     return {
@@ -318,8 +325,7 @@ def find_text_position(document_id: str, search_text: str) -> dict:
 
 
 def get_approval_matrix_prompt(
-    matrix_file: Optional[str] = None,
-    format: str = "markdown"
+    matrix_file: Optional[str] = None, format: str = "markdown"
 ) -> str:
     """Format the contract approval matrix for embedding in LLM system prompts.
 
@@ -343,7 +349,9 @@ def get_approval_matrix_prompt(
     elif format == "compact":
         return _format_matrix_compact(rules)
     else:
-        raise ValueError(f"Unknown format: {format}. Use 'markdown', 'structured', or 'compact'")
+        raise ValueError(
+            f"Unknown format: {format}. Use 'markdown', 'structured', or 'compact'"
+        )
 
 
 def _format_matrix_markdown(rules: list) -> str:
@@ -413,3 +421,76 @@ def _format_matrix_compact(rules: list) -> str:
         )
 
     return "\n".join(output)
+
+
+def send_escalation_email(
+    to_email: str,
+    recipient_name: str,
+    contract_title: str,
+    contract_url: str,
+    violations_summary: str,
+    escalation_level: str,
+) -> dict:
+    """Send an escalation email via Gmail API.
+
+    Args:
+        to_email: Recipient's email address
+        recipient_name: Recipient's name (e.g., "Antti")
+        contract_title: Title of the contract document
+        contract_url: URL to the Google Docs contract
+        violations_summary: Summary of contract violations
+        escalation_level: Required escalation level (e.g., "Head of BU", "BA President", "CEO")
+
+    Returns:
+        dict with:
+            - success: Whether the email was sent successfully
+            - message_id: The ID of the sent message
+            - error: Error message if failed
+    """
+    try:
+        gmail_service = get_gmail_service()
+
+        # Create email content
+        subject = f"Contract Approval Required: {contract_title}"
+
+        body = f"""Dear {recipient_name},
+
+Approval is required for the following contract that has been evaluated and requires escalation to {escalation_level}.
+
+Contract: {contract_title}
+Review here: {contract_url}
+
+Summary of Policy Violations:
+{violations_summary}
+
+Please review the contract at your earliest convenience. The violations have been highlighted in the document with color-coded backgrounds and detailed comments.
+
+Color Guide:
+- Yellow = Head of BU approval
+- Orange = BA President approval
+- Red = CEO approval
+
+Best regards,
+Contract Approval System
+"""
+
+        # Create MIME message
+        message = MIMEText(body)
+        message["to"] = to_email
+        message["subject"] = subject
+
+        # Encode the message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
+
+        # Send the email
+        send_message = (
+            gmail_service.users()
+            .messages()
+            .send(userId="me", body={"raw": raw_message})
+            .execute()
+        )
+
+        return {"success": True, "message_id": send_message.get("id"), "error": None}
+
+    except Exception as e:
+        return {"success": False, "message_id": None, "error": str(e)}

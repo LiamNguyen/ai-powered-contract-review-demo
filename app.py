@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from streaming_assistant import StreamingContractAssistant
+from google_docs_tools import send_escalation_email
 
 
 # Initialize FastAPI app
@@ -57,6 +58,35 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class EmailRequest(BaseModel):
+    """Email request model."""
+    to_email: str
+    recipient_name: str
+    contract_title: str
+    contract_url: str
+    violations_summary: str
+    escalation_level: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "to_email": "liamnguyen1208@gmail.com",
+                "recipient_name": "Antti",
+                "contract_title": "Supply Agreement",
+                "contract_url": "https://docs.google.com/document/d/1rHt_qNNnOEdVTS5q4fCMmUxotQNceUNYLjBhs1kqMfE/edit",
+                "violations_summary": "1. Payment Terms: Payment terms >60 days\n2. Liquidated Damages: Penalty >5%",
+                "escalation_level": "Head of BU"
+            }
+        }
+
+
+class EmailResponse(BaseModel):
+    """Email response model."""
+    success: bool
+    message_id: str = None
+    error: str = None
+
+
 # Endpoints
 @app.get("/", response_model=HealthResponse)
 async def root():
@@ -96,9 +126,12 @@ async def chat_stream(request: ChatInput):
     try:
         messages = [{"role": "user", "content": request.message}]
 
-        def generate_response():
+        async def generate_response():
+            import asyncio
             for chunk in assistant.stream_agent(messages):
                 yield chunk
+                # Small yield to prevent buffering
+                await asyncio.sleep(0)
 
         return StreamingResponse(
             generate_response(),
@@ -136,6 +169,38 @@ async def chat(request: ChatInput):
         raise HTTPException(
             status_code=500,
             detail=f"Error processing request: {str(e)}"
+        )
+
+
+@app.post("/send-email", response_model=EmailResponse)
+async def send_email(request: EmailRequest):
+    """Send escalation email endpoint.
+
+    This endpoint allows direct email sending without re-evaluating the contract.
+    Useful if you already have the evaluation results and just want to send the email.
+
+    Args:
+        request: EmailRequest with email details
+
+    Returns:
+        EmailResponse with success status and message ID
+    """
+    try:
+        result = send_escalation_email(
+            to_email=request.to_email,
+            recipient_name=request.recipient_name,
+            contract_title=request.contract_title,
+            contract_url=request.contract_url,
+            violations_summary=request.violations_summary,
+            escalation_level=request.escalation_level
+        )
+
+        return EmailResponse(**result)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error sending email: {str(e)}"
         )
 
 

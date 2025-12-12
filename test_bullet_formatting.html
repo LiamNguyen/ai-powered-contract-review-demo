@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bullet Point Formatting Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .input {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            border-left: 3px solid #999;
+        }
+        .output {
+            background: #e8f5e9;
+            padding: 10px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            border-left: 3px solid #4caf50;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bullet Point Formatting Test</h1>
+
+    <div class="test-section">
+        <h2>Test 1: Your Actual Case</h2>
+        <div class="input" id="test1-input"></div>
+        <div class="output" id="test1-output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Multiple Bullets</h2>
+        <div class="input" id="test2-input"></div>
+        <div class="output" id="test2-output"></div>
+    </div>
+
+    <script>
+        // Format message content to ensure bullet points are on separate lines
+        function formatMessageContent(content) {
+            // First, replace any bullet that appears after a period/sentence with newline
+            let formatted = content.replace(/([.!?])\s*•\s*/g, '$1\n\n• ')
+            // Then, replace any remaining bullets that are not at start of line
+            formatted = formatted.replace(/([^\n])\s+•\s+/g, '$1\n• ')
+            return formatted
+        }
+
+        // Test 1: Your actual case
+        const test1 = "Recommend re-negotiating before escalation. • Zero accepted deviations with this customer (0/3 contracts) indicates we maintain strict policies with Zeus Fiction Oy • High negotiation rounds (6.3 avg) shows historically difficult relationship and protracted negotiations • Current violations are severe (500% liability cap, 20% daily penalties) and unlikely to be approved internally given our historical stance • Re-negotiation to reduce violations will save executive time and increase approval likelihood"
+
+        document.getElementById('test1-input').textContent = test1
+        document.getElementById('test1-output').textContent = formatMessageContent(test1)
+
+        // Test 2: Another example
+        const test2 = "Action: Escalate Directly • Customer has 100% acceptance rate • All violations were previously accepted • Low negotiation rounds"
+
+        document.getElementById('test2-input').textContent = test2
+        document.getElementById('test2-output').textContent = formatMessageContent(test2)
+
+        console.log('Test 1 formatted:', formatMessageContent(test1))
+        console.log('Test 2 formatted:', formatMessageContent(test2))
+    </script>
+</body>
+</html>

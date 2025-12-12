@@ -12,6 +12,7 @@ from googleapiclient.discovery import build
 SCOPES = [
     "https://www.googleapis.com/auth/documents",  # Read and create docs
     "https://www.googleapis.com/auth/drive.file",  # Access files created by app
+    "https://www.googleapis.com/auth/gmail.send",  # Send emails via Gmail
 ]
 
 # Paths relative to project root
@@ -62,3 +63,9 @@ def get_drive_service():
     """Get Google Drive API service."""
     creds = get_credentials()
     return build("drive", "v3", credentials=creds)
+
+
+def get_gmail_service():
+    """Get Gmail API service."""
+    creds = get_credentials()
+    return build("gmail", "v1", credentials=creds)

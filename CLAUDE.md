@@ -18,6 +18,7 @@ This is an AI-driven contract approval system that integrates with Google Docs a
 - Provides `/chat/stream` endpoint for real-time evaluation
 - Accepts natural language messages with Google Docs URLs
 - Streams progress updates during evaluation
+- Provides `/send-email` endpoint for escalation notifications
 - CORS-enabled for frontend integration
 
 **streaming_assistant.py** - Streaming chat assistant
@@ -25,13 +26,17 @@ This is an AI-driven contract approval system that integrates with Google Docs a
 - Orchestrates the evaluation workflow
 - Streams response chunks back to client
 - Integrates with ContractEvaluator
+- Prompts user to send escalation emails after evaluation
+- Detects "send email" intent in follow-up messages
 
 Workflow:
-1. User sends message via POST /chat/stream
-2. StreamingAssistant extracts Google Docs URL from message
-3. Calls ContractEvaluator to analyze contract
-4. Streams real-time progress updates
-5. Returns formatted summary with evaluation results
+1. User sends message via POST /chat/stream with Google Docs URL
+2. StreamingAssistant extracts URL and analyzes contract
+3. Streams real-time progress updates during evaluation
+4. Returns formatted summary with evaluation results
+5. If escalation required, stores evaluation and prompts: "Simply reply: Yes"
+6. User replies "Yes" (or similar) → email sent immediately without re-evaluation
+7. Evaluation cleared from memory after email is sent
 
 ### Standalone Application
 
@@ -69,9 +74,9 @@ Text Extraction Strategy:
 ### Core Components
 
 **google_docs_tools/** - Python package for Google API integration
-- `auth.py`: OAuth2 authentication with token caching
-- `tools.py`: High-level API wrappers for reading docs and adding comments
-- `__init__.py`: Exports main functions: `read_document`, `add_comment`, `get_document_text`, `find_text_position`, `create_document`, `get_approval_matrix_prompt`
+- `auth.py`: OAuth2 authentication with token caching, Gmail API service
+- `tools.py`: High-level API wrappers for reading docs, adding comments, and sending emails
+- `__init__.py`: Exports main functions: `read_document`, `add_comment`, `get_document_text`, `find_text_position`, `create_document`, `get_approval_matrix_prompt`, `send_escalation_email`
 
 **contract_approval_matrix.json** - Policy rules defining:
 - Contract condition thresholds (e.g., "Total liability cap >100%")
@@ -104,11 +109,12 @@ source venv/bin/activate  # macOS/Linux
 
 **Google Cloud Setup Required:**
 1. Create Google Cloud project
-2. Enable Google Docs API and Google Drive API
+2. Enable Google Docs API, Google Drive API, and Gmail API
 3. Create OAuth 2.0 credentials (Desktop app type)
 4. Download `credentials.json` to project root
 5. First run opens browser for authentication
 6. Token cached in `token.json` for subsequent runs
+7. **IMPORTANT**: After adding Gmail scope, delete `token.json` and re-authenticate to get Gmail permissions
 
 **Dependencies:**
 ```bash
@@ -202,11 +208,57 @@ system_prompt = f"""You are a contract reviewer. Use these approval rules:
 Review the contract and identify which clauses trigger these rules."""
 ```
 
+**Send escalation emails:**
+```python
+from google_docs_tools import send_escalation_email
+
+# Send email to approver
+result = send_escalation_email(
+    to_email="approver@example.com",
+    recipient_name="Antti",
+    contract_title="Supply Agreement with Acme Corp",
+    contract_url="https://docs.google.com/document/d/...",
+    violations_summary="1. Payment Terms: Payment terms >60 days\n2. Liquidated Damages: Penalty >5%",
+    escalation_level="Head of BU"
+)
+
+if result["success"]:
+    print(f"Email sent! Message ID: {result['message_id']}")
+else:
+    print(f"Failed: {result['error']}")
+```
+
+**Email Escalation via API:**
+```bash
+# Using the /send-email endpoint
+curl -X POST "http://localhost:8000/send-email" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to_email": "liamnguyen1208@gmail.com",
+    "recipient_name": "Antti",
+    "contract_title": "Supply Agreement",
+    "contract_url": "https://docs.google.com/document/d/1rHt_qNNnOEdVTS5q4fCMmUxotQNceUNYLjBhs1kqMfE/edit",
+    "violations_summary": "1. Payment Terms: Payment terms >60 days",
+    "escalation_level": "Head of BU"
+  }'
+```
+
+**Conversational Email Flow:**
+After evaluating a contract with violations, the assistant will prompt:
+```
+This contract requires CEO approval. Would you like me to send an escalation email to Antti (Head of BU)?
+
+Simply reply: Yes
+```
+
+Just reply "Yes" (or "yeah", "sure", "ok", "send it") and the system will automatically send the email using the stored evaluation - no need to re-evaluate!
+
 ## Key Implementation Details
 
 **OAuth Scopes Required:**
 - `https://www.googleapis.com/auth/documents` - Read and create docs
 - `https://www.googleapis.com/auth/drive.file` - Access files created by app
+- `https://www.googleapis.com/auth/gmail.send` - Send emails via Gmail
 
 **Document ID Extraction:**
 The `extract_document_id()` function accepts both:

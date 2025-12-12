@@ -4,6 +4,15 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+// Format message content to ensure bullet points are on separate lines
+function formatMessageContent(content: string): string {
+  // First, replace any bullet that appears after a period/sentence with newline
+  let formatted = content.replace(/([.!?])\s*•\s*/g, '$1\n\n• ')
+  // Then, replace any remaining bullets that are not at start of line
+  formatted = formatted.replace(/([^\n])\s+•\s+/g, '$1\n• ')
+  return formatted
+}
+
 export default function SimpleChat() {
   const [messages, setMessages] = useState<{role: string, content: string}[]>([])
   const [input, setInput] = useState("")
@@ -84,7 +93,9 @@ export default function SimpleChat() {
             <div className="font-semibold text-sm mb-1">
               {message.role === "user" ? "You" : "Supervisor Agent"}
             </div>
-            <div className="whitespace-pre-wrap">{message.content}</div>
+            <div className="whitespace-pre-wrap break-words" style={{ lineHeight: '1.6' }}>
+              {formatMessageContent(message.content)}
+            </div>
           </div>
         ))}
         {isLoading && (
