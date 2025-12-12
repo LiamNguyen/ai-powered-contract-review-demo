@@ -3,14 +3,32 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import ReactMarkdown from "react-markdown"
+import rehypeRaw from "rehype-raw"
 
-// Format message content to ensure bullet points are on separate lines
-function formatMessageContent(content: string): string {
-  // First, replace any bullet that appears after a period/sentence with newline
-  let formatted = content.replace(/([.!?])\s*•\s*/g, '$1\n\n• ')
-  // Then, replace any remaining bullets that are not at start of line
-  formatted = formatted.replace(/([^\n])\s+•\s+/g, '$1\n• ')
-  return formatted
+// Render message content with markdown and HTML support
+function renderMessageContent(content: string) {
+  return (
+    <ReactMarkdown
+      rehypePlugins={[rehypeRaw]}
+      components={{
+        // Style paragraphs
+        p: ({ node, ...props }) => <p className="mb-2" {...props} />,
+        // Style unordered lists
+        ul: ({ node, ...props }) => (
+          <ul className="list-disc pl-6 my-2 space-y-1" {...props} />
+        ),
+        // Style list items
+        li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+        // Style strong/bold
+        strong: ({ node, ...props }) => (
+          <strong className="font-semibold" {...props} />
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  )
 }
 
 export default function SimpleChat() {
@@ -93,8 +111,8 @@ export default function SimpleChat() {
             <div className="font-semibold text-sm mb-1">
               {message.role === "user" ? "You" : "Supervisor Agent"}
             </div>
-            <div className="whitespace-pre-wrap break-words" style={{ lineHeight: '1.6' }}>
-              {formatMessageContent(message.content)}
+            <div className="break-words" style={{ lineHeight: '1.6' }}>
+              {renderMessageContent(message.content)}
             </div>
           </div>
         ))}

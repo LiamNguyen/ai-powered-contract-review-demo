@@ -232,17 +232,19 @@ Based on the customer history and escalation level, provide ONE of these recomme
 3. RECOMMEND CAUTIOUS APPROACH if neither pattern is clear
 
 RECOMMENDATION FORMAT REQUIREMENTS:
-- Keep reasoning CONCISE (3-5 sentences maximum)
-- CRITICAL: Each bullet point MUST be on a separate line with a newline character before it
-- Use bullet points (•) to separate key factors
-- Start with clear recommendation, then provide supporting rationale on the next line
-- Focus on: (1) historical pattern, (2) approval likelihood, (3) suggested action
-- Example format (note the newlines):
-  "Recommend re-negotiating before escalation.
+- Keep reasoning CONCISE (2-3 sentences maximum for intro + 3-4 short bullet points)
+- Use plain text format with newlines
+- Start with a brief intro sentence on its own line
+- Add a blank line, then list 3-4 bullet points using dash (-)
+- Each bullet point on a new line starting with "- "
+- Keep each bullet to ONE line (max 100 characters)
+- Example format:
+  "Recommend re-negotiating before escalation given our strict historical stance.
 
-• Zero accepted deviations with this customer (0/3 contracts) indicates we maintain strict policies
-• High negotiation rounds (6.3 avg) shows difficult relationship
-• Current violations unlikely to be approved internally given our historical stance"
+- Zero accepted deviations with this customer (0/3 contracts)
+- High negotiation rounds (6.3 avg) indicates difficult relationship
+- Current violations unlikely to be approved internally
+- Re-negotiation will save executive time and increase approval chances"
 
 Your analysis must be returned as valid JSON with this structure:
 {{
@@ -260,7 +262,7 @@ Your analysis must be returned as valid JSON with this structure:
   "highest_escalation": "CEO|BA President|Head of BU",
   "recommendation": {{
     "action": "re-negotiate|escalate-directly|cautious-approach",
-    "reasoning": "3-5 concise sentences with bullet points for key factors, focusing on historical pattern and approval likelihood"
+    "reasoning": "Plain text with intro, blank line, then bullet points (- ) on separate lines"
   }}
 }}
 
@@ -339,12 +341,9 @@ Return your analysis as valid JSON."""
                 # Stream action
                 yield f"**Recommended Action:** {action}\n\n"
 
-                # Stream reasoning in small chunks
+                # Stream reasoning (don't split HTML into words!)
                 reasoning = recommendation.get("reasoning", "")
-                words = reasoning.split()
-                for i in range(0, len(words), 3):
-                    chunk = " ".join(words[i:i+3]) + " "
-                    yield chunk
+                yield reasoning
                 yield "\n\n"
 
             # Add comments if violations found
