@@ -12,6 +12,60 @@ This is an AI-driven contract approval system that integrates with Google Docs a
 
 ## Architecture
 
+### FastAPI Application (Recommended for Production)
+
+**app.py** - FastAPI web server with streaming endpoints
+- Provides `/chat/stream` endpoint for real-time evaluation
+- Accepts natural language messages with Google Docs URLs
+- Streams progress updates during evaluation
+- CORS-enabled for frontend integration
+
+**streaming_assistant.py** - Streaming chat assistant
+- Extracts Google Docs URLs from user messages using regex
+- Orchestrates the evaluation workflow
+- Streams response chunks back to client
+- Integrates with ContractEvaluator
+
+Workflow:
+1. User sends message via POST /chat/stream
+2. StreamingAssistant extracts Google Docs URL from message
+3. Calls ContractEvaluator to analyze contract
+4. Streams real-time progress updates
+5. Returns formatted summary with evaluation results
+
+### Standalone Application
+
+**evaluate_contract.py** - AI-powered contract evaluator
+- Uses Claude Sonnet 4.5 via AWS Bedrock to analyze contracts
+- Reads Google Docs contracts and compares against approval matrix
+- Automatically adds comments and highlights to problematic clauses
+- Generates HTML summary with escalation recommendations
+
+**IMPORTANT**: The LLM is strictly instructed to ONLY flag violations that match the approval matrix conditions. It does not use general contract knowledge to identify issues beyond the defined policies.
+
+Workflow:
+1. Read contract from Google Docs
+2. Send contract + approval matrix to Claude for analysis
+3. Claude identifies policy violations (ONLY those matching matrix rules)
+4. Script adds comments to specific clauses in the doc
+5. Returns HTML summary showing violations and required approvals
+
+Comment Addition Process:
+- Finds exact text in document using character-by-character mapping
+- Highlights text with **color-coded background** based on escalation level:
+  - Yellow (Head of BU)
+  - Orange (BA President)
+  - Red (CEO)
+- Adds comment with detailed explanation (Drive API)
+- Comment format: `[Re: '...']` then `{Role} approval required` then explanation
+- Falls back to substring search if exact match not found
+
+Text Extraction Strategy:
+- LLM instructed to extract the EXACT clause containing the violation
+- Targets the specific sentence/phrase with the violating number/term
+- Avoids paragraph introductions or conditional clauses before the violation
+- Example: Instead of extracting "If equipment is delayed...the supplier shall pay 20%", it extracts "the SUPPLIER shall pay...20% per cent of the CONTRACT PRICE as liquidated damages"
+
 ### Core Components
 
 **google_docs_tools/** - Python package for Google API integration
@@ -59,10 +113,37 @@ source venv/bin/activate  # macOS/Linux
 **Dependencies:**
 ```bash
 pip install -r requirements.txt
-# Installs: google-api-python-client, google-auth-httplib2, google-auth-oauthlib
+# Installs: google-api-python-client, google-auth-httplib2, google-auth-oauthlib, boto3
 ```
 
+**AWS Bedrock Setup Required:**
+1. Configure AWS credentials (one of these methods):
+   - Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+   - AWS credentials file: `~/.aws/credentials`
+   - IAM role (if running on AWS EC2/ECS)
+2. Ensure your AWS account has access to Claude Sonnet 4.5 in Bedrock
+3. Default region: `us-west-2` (can be changed via `AWS_REGION` env var)
+4. Inference profile used: `us.anthropic.claude-sonnet-4-5-20250929-v1:0`
+
 ## Common Commands
+
+**Run FastAPI server (recommended for frontend integration):**
+```bash
+# Development mode with auto-reload
+uvicorn app:app --reload --port 8000
+
+# Production mode
+uvicorn app:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Test the API
+python test_api.py
+```
+
+**Run contract evaluator (standalone Python script):**
+```bash
+# Requires AWS credentials configured for Bedrock access
+python evaluate_contract.py
+```
 
 **Run tests:**
 ```bash

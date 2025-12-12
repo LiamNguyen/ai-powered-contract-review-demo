@@ -36,3 +36,48 @@ Flow:
 
 6. Escalation level: Head of BU < BA President < CEO
 7. Use Claude Sonnet 4.5 through AWS Bedrock
+8. For now, the Google Docs URL is inside the tools. Later on, the Google Docs URL will be provided as parameter. To be done later.
+
+### Improvement to text highlight
+
+I see the comments and yellow highlights now.
+
+However, for one of the violation, instead of highlighting this "if the PURCHASER so demands, a sum of 20% per cent of the CONTRACT PRICE as liquidated damages for each commencing day of the delay", it highlighted this: "If the equipment included in the DELIVERY are not ready for shipment at SUPPLIER's".
+
+Requirements/improvements:
+
+1. Highlight the targeted texts that was identified to directly violate the policies, not highlighting the starting texts of that paragraph
+2. Highlight different colors depending on the escalation.
+   1. Head of BU: Yellow
+   2. BA President: Orange
+   3. CEO: Red
+3. In the comment, below '[Re: ...]', add a line '{Role} approval required'
+
+### Improvement to repsonse to user after evaluation is done
+
+1. Remove Violations Summary
+
+## 2nd requirement
+
+Create a FastAPI with the endpoint below:
+
+```PYTHON
+# Streaming chat endpoint
+@app.post("/chat/stream")
+async def chat_stream(request: ChatInput):
+    try:
+        messages = [{"role": "user", "content": request.message}]
+
+        def generate_response():
+            for chunk in assistant.stream_agent(messages):
+                yield chunk
+
+        return StreamingResponse(generate_response(), media_type="text/plain")
+    except Exception as e:
+        return {"response": f"Error: {str(e)}"}
+```
+
+This endpoint receives user's message, pass to the current python script for evaluating contract.
+In user message, user will provide Google Docs url (the contract) that needs to be evaluated.
+
+You need to improve the current Python script to make the LLM read user's message, pick out the Google Docs URL, feed to tools for next steps in the evaluation process.

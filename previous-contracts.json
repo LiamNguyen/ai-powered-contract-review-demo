@@ -1,1 +1,67 @@
-[]
+[
+    {
+        "contract_id": 1,
+        "purchaser": "Zeus Fiction Oy",
+        "contract_closing_date": "3 months ago",
+        "accepted_deviations": [],
+        "customer_negotiation_rounds": 8
+    },
+    {
+        "contract_id": 2,
+        "purchaser": "Zeus Fiction Oy",
+        "contract_closing_date": "2 months ago",
+        "accepted_deviations": [],
+        "customer_negotiation_rounds": 5
+    },
+    {
+        "contract_id": 3,
+        "purchaser": "Zeus Fiction Oy",
+        "contract_closing_date": "4 months ago",
+        "accepted_deviations": [],
+        "customer_negotiation_rounds": 6
+    },
+    {
+        "contract_id": 4,
+        "purchaser": "Metis Fiction Oy",
+        "contract_closing_date": "5 months ago",
+        "accepted_deviations": [
+            {
+                "condition": "Total liability cap >100%",
+                "negotiated_term": "Total liability cap agreed 120%"
+            }
+        ],
+        "customer_negotiation_rounds": 1
+    },
+    {
+        "contract_id": 5,
+        "purchaser": "Metis Fiction Oy",
+        "contract_closing_date": "4 months ago",
+        "accepted_deviations": [
+            {
+                "condition": "Total liability cap >70%",
+                "negotiated_term": "Total liability cap agreed 90%"
+            },
+            {
+                "condition": "Liquidated damages/penalties for delay >15% of Contract Price",
+                "negotiated_term": "Liquidated damages/penalties for delay agreed to be 30% of Contract Price"
+            }
+        ],
+        "customer_negotiation_rounds": 1
+    },
+    {
+        "contract_id": 6,
+        "purchaser": "Metis Fiction Oy",
+        "contract_closing_date": "7 months ago",
+        "accepted_deviations": [
+            {
+                "condition": "Payment term longer than 60 days",
+                "negotiated_term": "Payment term agreed 120 days"
+            },
+            {
+                "condition": "Liquidated damages/penalties for delay >15% of Contract Price",
+                "negotiated_term": "Liquidated damages/penalties for delay 30% of Contract Price"
+            }
+        ],
+        "customer_negotiation_rounds": 2
+    }
+]
