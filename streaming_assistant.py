@@ -37,8 +37,8 @@ class StreamingContractAssistant:
         """
         # Pattern for Google Docs URLs
         patterns = [
-            r'https://docs\.google\.com/document/d/([a-zA-Z0-9-_]+)',
-            r'docs\.google\.com/document/d/([a-zA-Z0-9-_]+)',
+            r"https://docs\.google\.com/document/d/([a-zA-Z0-9-_]+)",
+            r"docs\.google\.com/document/d/([a-zA-Z0-9-_]+)",
         ]
 
         for pattern in patterns:
@@ -49,7 +49,9 @@ class StreamingContractAssistant:
 
         return ""
 
-    def stream_agent(self, messages: List[Dict[str, str]]) -> Generator[str, None, None]:
+    def stream_agent(
+        self, messages: List[Dict[str, str]]
+    ) -> Generator[str, None, None]:
         """Stream agent responses for contract evaluation.
 
         Args:
@@ -62,12 +64,22 @@ class StreamingContractAssistant:
         user_message = messages[-1]["content"] if messages else ""
 
         # Check if user is confirming email send with a simple "yes"
-        simple_affirmations = ["yes", "yeah", "yep", "sure", "ok", "okay", "send it", "please send", "go ahead"]
-        is_simple_yes = user_message.lower().strip().rstrip('.!') in simple_affirmations
+        simple_affirmations = [
+            "yes",
+            "yeah",
+            "yep",
+            "sure",
+            "ok",
+            "okay",
+            "send it",
+            "please send",
+            "go ahead",
+        ]
+        is_simple_yes = user_message.lower().strip().rstrip(".!") in simple_affirmations
 
         # If user says "yes" and we have a previous evaluation, send email
         if is_simple_yes and self.last_evaluation:
-            yield "📧 Sending escalation email to Antti (Head of BU)...\n"
+            yield "📧 Sending escalation email to Antti (Head of BU)...\n\n"
 
             email_result = send_escalation_email(
                 to_email="liamnguyen1208@gmail.com",
@@ -75,27 +87,29 @@ class StreamingContractAssistant:
                 contract_title=self.last_evaluation["doc_title"],
                 contract_url=self.last_evaluation["doc_url"],
                 violations_summary=self.last_evaluation["violations_summary"],
-                escalation_level=self.last_evaluation["highest_escalation"]
+                escalation_level=self.last_evaluation["highest_escalation"],
             )
 
             if email_result["success"]:
-                yield f"✅ Email sent successfully to Antti (liamnguyen1208@gmail.com)\n"
-                yield f"📨 Message ID: {email_result['message_id']}\n\n"
-                yield f"The email includes:\n"
-                yield f"- Contract title: {self.last_evaluation['doc_title']}\n"
-                yield f"- Direct link to review: {self.last_evaluation['doc_url']}\n"
-                yield f"- Summary of all {len(self.last_evaluation['violations'])} violation(s)\n"
+                yield f"✅ Email sent successfully to Antti (liamnguyen1208@gmail.com)\n\n"
             else:
-                yield f"❌ Failed to send email: {email_result['error']}\n"
-                yield "Please check your Gmail API credentials and permissions.\n"
+                yield f"❌ Failed to send email: {email_result['error']}\n\n"
+                yield "Please check your Gmail API credentials and permissions.\n\n"
 
             # Clear the stored evaluation
             self.last_evaluation = None
             return
 
         # Check if user wants to send an email (with URL in message)
-        send_email_keywords = ["send email", "send the email", "yes send", "send escalation"]
-        is_email_request = any(keyword in user_message.lower() for keyword in send_email_keywords)
+        send_email_keywords = [
+            "send email",
+            "send the email",
+            "yes send",
+            "send escalation",
+        ]
+        is_email_request = any(
+            keyword in user_message.lower() for keyword in send_email_keywords
+        )
 
         # Extract Google Docs URL
         doc_url = self.extract_google_docs_url(user_message)
@@ -115,23 +129,28 @@ class StreamingContractAssistant:
             return
 
         # Stream the evaluation process
-        yield f"📄 Found Google Docs URL\n"
+        yield f"📄 Found Google Docs URL\n\n"
         yield f"🔍 Starting contract evaluation...\n\n"
 
         try:
             # Analyze the contract with streaming
-            yield "📖 Reading contract from Google Docs...\n"
+            yield "📖 Reading contract from Google Docs...\n\n"
 
             # Show progress during analysis
-            yield "🤖 Analyzing with Claude AI"
+            yield "🤖 Analyzing with Claude AI\n\n"
 
             # Use streaming analysis with progress dots
             import time
+
             analysis = None
 
             # Start analysis in a way that shows progress
             from google_docs_tools import get_document_text, get_approval_matrix_prompt
-            from evaluate_contract import extract_customer_name, get_customer_history, load_previous_contracts
+            from evaluate_contract import (
+                extract_customer_name,
+                get_customer_history,
+                load_previous_contracts,
+            )
             import json
 
             # Read document
@@ -139,25 +158,25 @@ class StreamingContractAssistant:
             contract_text = doc_data["full_text"]
             doc_title = doc_data["title"]
 
-            yield f" ({len(contract_text)} chars)\n"
-
             # Extract customer name and get history
             customer_name = extract_customer_name(contract_text)
             previous_contracts = load_previous_contracts()
             customer_history = None
 
             if customer_name:
-                yield f"👤 Customer: {customer_name}\n"
-                customer_history = get_customer_history(customer_name, previous_contracts)
-                if customer_history['has_history']:
-                    yield f"📊 {customer_history['total_contracts']} previous contracts, {customer_history['total_accepted_deviations']} accepted deviations\n"
+                yield f"👤 Customer: {customer_name}\n\n"
+                customer_history = get_customer_history(
+                    customer_name, previous_contracts
+                )
+                if customer_history["has_history"]:
+                    yield f"📊 {customer_history['total_contracts']} previous contracts, {customer_history['total_accepted_deviations']} accepted deviations\n\n"
 
             # Get approval matrix
             approval_matrix = get_approval_matrix_prompt(format="structured")
 
             # Build historical context for LLM
             history_context = ""
-            if customer_history and customer_history['has_history']:
+            if customer_history and customer_history["has_history"]:
                 history_context = f"""
 
 CUSTOMER HISTORY CONTEXT:
@@ -285,7 +304,9 @@ Return your analysis as valid JSON."""
             last_dot_time = time.time()
             dot_count = 0
 
-            for chunk in self.evaluator.invoke_claude_streaming(system_prompt, user_message):
+            for chunk in self.evaluator.invoke_claude_streaming(
+                system_prompt, user_message
+            ):
                 response += chunk
 
                 # Show a dot every 2 seconds to indicate progress
@@ -314,12 +335,12 @@ Return your analysis as valid JSON."""
 
             # Stream summary in small chunks for smooth effect
             yield "📊 **Summary**\n"
-            summary_text = analysis['summary']
+            summary_text = analysis["summary"]
 
             # Yield 2-3 words at a time (sweet spot for smooth streaming without buffering)
             words = summary_text.split()
             for i in range(0, len(words), 2):
-                chunk = " ".join(words[i:i+2]) + " "
+                chunk = " ".join(words[i : i + 2]) + " "
                 yield chunk
 
             yield "\n\n"
@@ -348,20 +369,22 @@ Return your analysis as valid JSON."""
 
             # Add comments if violations found
             if num_violations > 0:
-                yield "💬 Adding comments and highlights to document...\n"
+                yield "💬 Adding comments and highlights to document...\n\n"
 
                 # Stream comment addition progress
                 results = []
                 for i, violation in enumerate(analysis["violations"], 1):
                     # Add single comment
-                    result = self.evaluator.add_comments_to_contract(doc_url, [violation])
+                    result = self.evaluator.add_comments_to_contract(
+                        doc_url, [violation]
+                    )
                     results.extend(result)
 
                     # Yield progress after each comment
                     if result and result[0].get("success"):
-                        yield f"   ✓ Added comment {i}/{num_violations}\n"
+                        yield f"   ✓ Added comment {i}/{num_violations}\n\n"
                     else:
-                        yield f"   ⚠ Failed to add comment {i}/{num_violations}\n"
+                        yield f"   ⚠ Failed to add comment {i}/{num_violations}\n\n"
 
                 successful = sum(1 for r in results if r.get("success", False))
                 yield f"\n✅ Completed: {successful}/{num_violations} comments added\n\n"
@@ -380,7 +403,7 @@ Return your analysis as valid JSON."""
                 closing_msg = "The violations have been highlighted with color-coded backgrounds and detailed comments. Click on each highlight to see the comment explaining the policy violation and required approval."
                 words = closing_msg.split()
                 for i in range(0, len(words), 2):
-                    chunk = " ".join(words[i:i+2]) + " "
+                    chunk = " ".join(words[i : i + 2]) + " "
                     yield chunk
                 yield "\n\n"
 
@@ -399,14 +422,14 @@ Return your analysis as valid JSON."""
                         "doc_title": doc_title,
                         "violations_summary": violations_summary,
                         "highest_escalation": highest_escalation,
-                        "violations": analysis["violations"]
+                        "violations": analysis["violations"],
                     }
 
                 # Handle email sending or prompt (only if escalate-directly)
                 if should_offer_email:
                     if is_email_request:
                         # User requested to send email
-                        yield "📧 Sending escalation email to Antti (Head of BU)...\n"
+                        yield "📧 Sending escalation email to Antti (Head of BU)...\n\n"
 
                         # Send email
                         email_result = send_escalation_email(
@@ -415,15 +438,15 @@ Return your analysis as valid JSON."""
                             contract_title=doc_title,
                             contract_url=doc_url,
                             violations_summary=violations_summary,
-                            escalation_level=highest_escalation
+                            escalation_level=highest_escalation,
                         )
 
                         if email_result["success"]:
-                            yield f"✅ Email sent successfully to Antti (liamnguyen1208@gmail.com)\n"
-                            yield f"📨 Message ID: {email_result['message_id']}\n"
+                            yield f"✅ Email sent successfully to Antti (liamnguyen1208@gmail.com)\n\n"
+                            yield f"📨 Message ID: {email_result['message_id']}\n\n"
                         else:
-                            yield f"❌ Failed to send email: {email_result['error']}\n"
-                            yield "Please check your Gmail API credentials and permissions.\n"
+                            yield f"❌ Failed to send email: {email_result['error']}\n\n"
+                            yield "Please check your Gmail API credentials and permissions.\n\n"
 
                         # Clear stored evaluation after sending
                         self.last_evaluation = None
@@ -438,7 +461,7 @@ Return your analysis as valid JSON."""
                 msg = "No policy violations found. The contract complies with all approval matrix rules."
                 words = msg.split()
                 for i in range(0, len(words), 2):
-                    chunk = " ".join(words[i:i+2]) + " "
+                    chunk = " ".join(words[i : i + 2]) + " "
                     yield chunk
                 yield "\n"
 
@@ -450,9 +473,7 @@ Return your analysis as valid JSON."""
             yield "- AWS Bedrock credentials are configured\n"
 
     def invoke_streaming_claude(
-        self,
-        system_prompt: str,
-        user_message: str
+        self, system_prompt: str, user_message: str
     ) -> Generator[str, None, None]:
         """Invoke Claude with streaming response.
 
